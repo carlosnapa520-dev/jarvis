@@ -41,7 +41,7 @@ const reimagineTool: FunctionDeclaration = {
 };
 const playMusicTool: FunctionDeclaration = {
   name: "play_music",
-  description: "Opens Spotify to search for and play a song, artist, or playlist the user wants to listen to.",
+  description: "Opens YouTube to search for and play a song, artist, or playlist the user wants to listen to.",
   parameters: {
     type: Type.OBJECT,
     properties: {
@@ -109,7 +109,7 @@ export class LiveService {
         config: {
           responseModalities: [Modality.AUDIO],
           systemInstruction: "You are Jarvis, a highly advanced AI assistant. You are helpful, precise, and have a futuristic personality. \n\nCRITICAL RULES:\n1. If the user asks to 'create', 'generate', or 'draw' an image from scratch, you MUST use the `create_illustration` tool.\n2. If the user asks to 'take a photo', 'capture me', 'selfie', 'picture of me', or 'reimagine' them, you MUST use the `reimagine_user` tool. Do NOT just describe the video feed textually. You must generate an actual image using the tool.\n3. For real-time information/facts, use `search_google`.\n4. Always confirm verbally when you are about to perform an action (e.g., 'Capturing that for you now...').",
-          tools: [{ functionDeclarations: [searchTool, createTool, reimagineTool] }]
+          tools: [{ functionDeclarations: [searchTool, createTool, reimagineTool, playMusicTool] }]
         }
       });
       
@@ -288,13 +288,13 @@ export class LiveService {
          } else if (fc.name === "play_music") {
                 const args = fc.args as any;
                 const query = args.query;
-                const url = `https://open.spotify.com/search/${encodeURIComponent(query)}`;
+                const url = `https://open.YouTube.com/search/${encodeURIComponent(query)}`;
                 window.open(url, '_blank');
-                result = { result: `Opened Spotify search for ${query}` };
+                result = { result: `Opened YouTube search for ${query}` };
                 this.onMessage({
                   id: fc.id,
                   role: 'model',
-                  text: `Opening Spotify for "${query}"...`,
+                  text: `Opening YouTube for "${query}"...`,
                   timestamp: new Date()
                 });
               } 
