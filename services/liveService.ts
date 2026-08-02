@@ -92,6 +92,17 @@ const rememberFactTool: FunctionDeclaration = {
     required: ["fact"],
   },
 };
+const identifyObjectTool: FunctionDeclaration = {
+  name: "identify_object",
+  description: "Looks at the current camera view and describes what it sees, identifies objects, plants, text, or answers questions about what's visible. Use this for requests like 'what is this', 'identify this plant', 'read this text', or 'what am I looking at'.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      question: { type: Type.STRING, description: "What the user wants to know about the current camera view, e.g. 'what plant is this' or 'read this label'." },
+    },
+    required: ["question"],
+  },
+};
 export class LiveService {
   private ai: GoogleGenAI;
   private session: any = null; // Typing 'any' because session type is internal to SDK implementation for now
@@ -186,8 +197,8 @@ private saveMemoryFact(fact: string) {
         },
         config: {
           responseModalities: [Modality.AUDIO],
-          systemInstruction: "You are Jarvis, a highly advanced AI assistant. You are helpful, precise, and have a futuristic personality. When the user asks to play, listen to, or hear music, a song, or an artist, you MUST use the play_music tool instead of search_google. When the user asks to watch, see, or find a video on YouTube, use the open_youtube tool. When the user asks to open a specific website, or wants to see search results in the browser (not just hear the answer), use the open_website tool. Use search_google only when the user wants a spoken answer, not to open a page. When the user asks what song is playing or to identify a song by listening, use the identify_song tool. It takes a few seconds while it listens. \n\nCRITICAL RULES:\n1. If the user asks to 'create', 'generate', or 'draw' an image from scratch, you MUST use the `create_illustration` tool.\n2. If the user asks to 'take a photo', 'capture me', 'selfie', 'picture of me', or 'reimagine' them, you MUST use the `reimagine_user` tool. Do NOT just describe the video feed textually. You must generate an actual image using the tool.\n3. For real-time information/facts, use `search_google`.\n4. Always confirm verbally when you are about to perform an action (e.g., 'Capturing that for you now...When the user asks to play music, listen to a song, or hear an artist, you MUST use the play_music tool — do NOT use search_google for music requests.') If the user asks 'what song is this', to identify a song playing nearby, or to Shazam a song, you MUST use the identify_song tool — this listens to ambient audio. Do NOT use search_google for this, even if the user describes lyrics or hums.When the user tells you something to remember (like their name or a preference), use the remember_fact tool to save it." + this.getMemoryContext(),
-          tools: [{ functionDeclarations: [searchTool, createTool, reimagineTool, playMusicTool, openYoutubeTool, openWebsiteTool, identifySongTool, rememberFactTool] }]
+          systemInstruction: "You are Jarvis, a highly advanced AI assistant. You are helpful, precise, and have a futuristic personality. When the user asks to play, listen to, or hear music, a song, or an artist, you MUST use the play_music tool instead of search_google. When the user asks to watch, see, or find a video on YouTube, use the open_youtube tool. When the user asks to open a specific website, or wants to see search results in the browser (not just hear the answer), use the open_website tool. Use search_google only when the user wants a spoken answer, not to open a page. When the user asks what song is playing or to identify a song by listening, use the identify_song tool. It takes a few seconds while it listens. \n\nCRITICAL RULES:\n1. If the user asks to 'create', 'generate', or 'draw' an image from scratch, you MUST use the `create_illustration` tool.\n2. If the user asks to 'take a photo', 'capture me', 'selfie', 'picture of me', or 'reimagine' them, you MUST use the `reimagine_user` tool. Do NOT just describe the video feed textually. You must generate an actual image using the tool.\n3. For real-time information/facts, use `search_google`.\n4. Always confirm verbally when you are about to perform an action (e.g., 'Capturing that for you now...When the user asks to play music, listen to a song, or hear an artist, you MUST use the play_music tool — do NOT use search_google for music requests.') If the user asks 'what song is this', to identify a song playing nearby, or to Shazam a song, you MUST use the identify_song tool — this listens to ambient audio. Do NOT use search_google for this, even if the user describes lyrics or hums.When the user tells you something to remember (like their name or a preference), use the remember_fact tool to save it.When the user asks what something is, to identify an object, plant, or text using the camera (like 'what is this' or 'read this'), use the identify_object tool." + this.getMemoryContext(),
+          tools: [{ functionDeclarations: [searchTool, createTool, reimagineTool, playMusicTool, openYoutubeTool, openWebsiteTool, identifySongTool, rememberFactTool, identifyObjectTool] }]
         }
       });
       
@@ -437,6 +448,31 @@ private saveMemoryFact(fact: string) {
     text: `Remembered: "${fact}"`,
     timestamp: new Date()
   });
+            } else if (fc.name === "identify_object") {
+  const args = fc.args as any;
+  const question = args.question || "What is in this image? Describe it clearly.";
+  this.onMessage({
+    id: fc.id,
+    role: 'model',
+    text: `Looking...`,
+    timestamp: new Date()
+  });
+  if (!this.currentCameraFrame) {
+    result = { result: "The camera isn't available right now. Ask the user to enable the camera first." };
+  } else {
+    const rawBase64 = this.currentCameraFrame.replace(/^data:image\/\w+;base64,/, "");
+    const visionResponse = await this.ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: {
+        parts: [
+          { inlineData: { mimeType: "image/jpeg", data: rawBase64 } },
+          { text: question }
+        ]
+      }
+    });
+    const description = visionResponse.text || "I couldn't make out anything specific in the image.";
+    result = { result: description };
+  }
           }
         } catch (e: any) {
             result = { error: e.message };
