@@ -287,8 +287,10 @@ export class LiveService {
          } else if (fc.name === "play_music") {
                 const args = fc.args as any;
                 const query = args.query;
-                const url = `https://open.spotify.com/search/${encodeURIComponent(query)}`;
-                window.open(url, '_blank');
+                const nativeUrl = `spotify:search:${encodeURIComponent(query)}`;
+    const webUrl = `https://open.spotify.com/search/${encodeURIComponent(query)}`;
+    window.location.href = nativeUrl;
+    setTimeout(() => { window.open(webUrl, '_blank'); }, 1500);
                 result = { result: `Opened Spotify search for ${query}` };
                 this.onMessage({
                   id: fc.id,
