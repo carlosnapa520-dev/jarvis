@@ -41,7 +41,7 @@ const reimagineTool: FunctionDeclaration = {
 };
 const playMusicTool: FunctionDeclaration = {
   name: "play_music",
-  description: "Opens YouTube to search for and play a song, artist, or playlist the user wants to listen to.",
+  description: "Opens Spotify to search for and play a song, artist, or playlist the user wants to listen to.",
   parameters: {
     type: Type.OBJECT,
     properties: {
@@ -288,9 +288,9 @@ export class LiveService {
          } else if (fc.name === "play_music") {
                 const args = fc.args as any;
                 const query = args.query;
-                const url = `https://open.YouTube.com/search/${encodeURIComponent(query)}`;
+                const url = `https://open.Spotify com/search/${encodeURIComponent(query)}`;
                 window.open(url, '_blank');
-                result = { result: `Opened YouTube search for ${query}` };
+                result = { result: `Opened Spotify search for ${query}` };
                 this.onMessage({
                   id: fc.id,
                   role: 'model',
