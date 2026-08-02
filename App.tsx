@@ -14,14 +14,9 @@ export default function App() {
   const [activeMedia, setActiveMedia] = useState<MessageLog | null>(null);
 
   useEffect(() => {
-    const checkKey = async () => {
-      if ((window as any).aistudio && await (window as any).aistudio.hasSelectedApiKey()) {
         setHasKey(true);
-      }
-    };
-    checkKey();
-  }, []);
-
+    }, []);
+  
   useEffect(() => {
     if (!hasKey) return;
 
