@@ -321,7 +321,6 @@ export class LiveService {
                   text: `Opening Spotify for "${query}"...`,
                   timestamp: new Date()
                 });
-              } 
           } else if (fc.name === "open_youtube") {
   const args = fc.args as any;
   const query = args.query;
