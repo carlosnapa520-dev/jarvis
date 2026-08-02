@@ -50,6 +50,29 @@ const playMusicTool: FunctionDeclaration = {
     required: ["query"],
   },
 };
+const openYoutubeTool: FunctionDeclaration = {
+  name: "open_youtube",
+  description: "Opens YouTube (app or web) to search for a video, channel, or topic.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      query: { type: Type.STRING, description: "The video, channel, or topic to search for on YouTube." },
+    },
+    required: ["query"],
+  },
+};
+
+const openWebsiteTool: FunctionDeclaration = {
+  name: "open_website",
+  description: "Opens a website or performs a general web search in the browser, for requests like 'open google.com' or 'search for X and show me the results'.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      query: { type: Type.STRING, description: "A URL to open directly, or a search term if no specific site was named." },
+    },
+    required: ["query"],
+  },
+};
 export class LiveService {
   private ai: GoogleGenAI;
   private session: any = null; // Typing 'any' because session type is internal to SDK implementation for now
@@ -108,8 +131,8 @@ export class LiveService {
         },
         config: {
           responseModalities: [Modality.AUDIO],
-          systemInstruction: "You are Jarvis, a highly advanced AI assistant. You are helpful, precise, and have a futuristic personality. When the user asks to play, listen to, or hear music, a song, or an artist, you MUST use the play_music tool instead of search_google. \n\nCRITICAL RULES:\n1. If the user asks to 'create', 'generate', or 'draw' an image from scratch, you MUST use the `create_illustration` tool.\n2. If the user asks to 'take a photo', 'capture me', 'selfie', 'picture of me', or 'reimagine' them, you MUST use the `reimagine_user` tool. Do NOT just describe the video feed textually. You must generate an actual image using the tool.\n3. For real-time information/facts, use `search_google`.\n4. Always confirm verbally when you are about to perform an action (e.g., 'Capturing that for you now...When the user asks to play music, listen to a song, or hear an artist, you MUST use the play_music tool — do NOT use search_google for music requests.').",
-          tools: [{ functionDeclarations: [searchTool, createTool, reimagineTool, playMusicTool] }]
+          systemInstruction: "You are Jarvis, a highly advanced AI assistant. You are helpful, precise, and have a futuristic personality. When the user asks to play, listen to, or hear music, a song, or an artist, you MUST use the play_music tool instead of search_google. When the user asks to watch, see, or find a video on YouTube, use the open_youtube tool. When the user asks to open a specific website, or wants to see search results in the browser (not just hear the answer), use the open_website tool. Use search_google only when the user wants a spoken answer, not to open a page. \n\nCRITICAL RULES:\n1. If the user asks to 'create', 'generate', or 'draw' an image from scratch, you MUST use the `create_illustration` tool.\n2. If the user asks to 'take a photo', 'capture me', 'selfie', 'picture of me', or 'reimagine' them, you MUST use the `reimagine_user` tool. Do NOT just describe the video feed textually. You must generate an actual image using the tool.\n3. For real-time information/facts, use `search_google`.\n4. Always confirm verbally when you are about to perform an action (e.g., 'Capturing that for you now...When the user asks to play music, listen to a song, or hear an artist, you MUST use the play_music tool — do NOT use search_google for music requests.').",
+          tools: [{ functionDeclarations: [searchTool, createTool, reimagineTool, playMusicTool, openYoutubeTool, openWebsiteTool] }]
         }
       });
       
@@ -299,6 +322,36 @@ export class LiveService {
                   timestamp: new Date()
                 });
               } 
+          } else if (fc.name === "open_youtube") {
+  const args = fc.args as any;
+  const query = args.query;
+  const nativeUrl = `vnd.youtube://results?q=${encodeURIComponent(query)}`;
+  const webUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+  window.location.href = nativeUrl;
+  setTimeout(() => { window.open(webUrl, '_blank'); }, 1500);
+  result = { result: `Opened YouTube search for ${query}` };
+  this.onMessage({
+    id: fc.id,
+    role: 'model',
+    text: `Opening YouTube for "${query}"...`,
+    timestamp: new Date()
+  });
+} else if (fc.name === "open_website") {
+  const args = fc.args as any;
+  const query = args.query;
+  const looksLikeUrl = /^(https?:\/\/|www\.)/i.test(query) || /\.[a-z]{2,}(\/.*)?$/i.test(query);
+  const url = looksLikeUrl
+    ? (query.startsWith('http') ? query : `https://${query}`)
+    : `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+  window.open(url, '_blank');
+  result = { result: `Opened ${url}` };
+  this.onMessage({
+    id: fc.id,
+    role: 'model',
+    text: `Opening "${query}"...`,
+    timestamp: new Date()
+  });
+    }
         } catch (e: any) {
             result = { error: e.message };
         }
