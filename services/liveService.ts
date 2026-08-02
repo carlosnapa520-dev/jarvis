@@ -73,6 +73,14 @@ const openWebsiteTool: FunctionDeclaration = {
     required: ["query"],
   },
 };
+const identifySongTool: FunctionDeclaration = {
+  name: "identify_song",
+  description: "Listens to the ambient sound for a few seconds to identify what song is currently playing, like Shazam. Use this when the user asks 'what song is this' or similar.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {},
+  },
+};
 export class LiveService {
   private ai: GoogleGenAI;
   private session: any = null; // Typing 'any' because session type is internal to SDK implementation for now
@@ -82,6 +90,7 @@ export class LiveService {
   private processor: ScriptProcessorNode | null = null;
   private nextStartTime: number = 0;
   private currentCameraFrame: string | null = null;
+  private micStream: MediaStream | null = null;
 
   public onStateChange: (state: ConnectionState) => void = () => {};
   public onMessage: (msg: MessageLog) => void = () => {};
@@ -103,8 +112,23 @@ export class LiveService {
              data: imageBase64
           }
        });
-    }
-  }
+      }
+   }
+      private recordAmbientAudio(durationMs: number): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      if (!this.micStream) {
+        reject(new Error("Microphone not available"));
+        return;
+      }
+      const chunks: Blob[] = [];
+      const recorder = new MediaRecorder(this.micStream);
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.onstop = () => { resolve(new Blob(chunks, { type: 'audio/webm' })); };
+      recorder.onerror = (e: any) => reject(e.error || new Error("Recording failed"));
+      recorder.start();
+      setTimeout(() => { recorder.stop(); }, durationMs);
+    });
+      }
 
   public async connect() {
     this.onStateChange(ConnectionState.CONNECTING);
@@ -114,6 +138,7 @@ export class LiveService {
       this.outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.micStream = stream;
       
       const sessionPromise = this.ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
@@ -131,8 +156,8 @@ export class LiveService {
         },
         config: {
           responseModalities: [Modality.AUDIO],
-          systemInstruction: "You are Jarvis, a highly advanced AI assistant. You are helpful, precise, and have a futuristic personality. When the user asks to play, listen to, or hear music, a song, or an artist, you MUST use the play_music tool instead of search_google. When the user asks to watch, see, or find a video on YouTube, use the open_youtube tool. When the user asks to open a specific website, or wants to see search results in the browser (not just hear the answer), use the open_website tool. Use search_google only when the user wants a spoken answer, not to open a page. \n\nCRITICAL RULES:\n1. If the user asks to 'create', 'generate', or 'draw' an image from scratch, you MUST use the `create_illustration` tool.\n2. If the user asks to 'take a photo', 'capture me', 'selfie', 'picture of me', or 'reimagine' them, you MUST use the `reimagine_user` tool. Do NOT just describe the video feed textually. You must generate an actual image using the tool.\n3. For real-time information/facts, use `search_google`.\n4. Always confirm verbally when you are about to perform an action (e.g., 'Capturing that for you now...When the user asks to play music, listen to a song, or hear an artist, you MUST use the play_music tool — do NOT use search_google for music requests.').",
-          tools: [{ functionDeclarations: [searchTool, createTool, reimagineTool, playMusicTool, openYoutubeTool, openWebsiteTool] }]
+          systemInstruction: "You are Jarvis, a highly advanced AI assistant. You are helpful, precise, and have a futuristic personality. When the user asks to play, listen to, or hear music, a song, or an artist, you MUST use the play_music tool instead of search_google. When the user asks to watch, see, or find a video on YouTube, use the open_youtube tool. When the user asks to open a specific website, or wants to see search results in the browser (not just hear the answer), use the open_website tool. Use search_google only when the user wants a spoken answer, not to open a page. When the user asks what song is playing or to identify a song by listening, use the identify_song tool. It takes a few seconds while it listens. \n\nCRITICAL RULES:\n1. If the user asks to 'create', 'generate', or 'draw' an image from scratch, you MUST use the `create_illustration` tool.\n2. If the user asks to 'take a photo', 'capture me', 'selfie', 'picture of me', or 'reimagine' them, you MUST use the `reimagine_user` tool. Do NOT just describe the video feed textually. You must generate an actual image using the tool.\n3. For real-time information/facts, use `search_google`.\n4. Always confirm verbally when you are about to perform an action (e.g., 'Capturing that for you now...When the user asks to play music, listen to a song, or hear an artist, you MUST use the play_music tool — do NOT use search_google for music requests.').",
+          tools: [{ functionDeclarations: [searchTool, createTool, reimagineTool, playMusicTool, openYoutubeTool, openWebsiteTool, identifySongTool] }]
         }
       });
       
@@ -351,6 +376,28 @@ export class LiveService {
     timestamp: new Date()
   });
     }
+          } else if (fc.name === "identify_song") {
+  this.onMessage({
+    id: fc.id,
+    role: 'model',
+    text: `Listening for the song...`,
+    timestamp: new Date()
+  });
+  const audioBlob = await this.recordAmbientAudio(7000);
+  const formData = new FormData();
+  formData.append('api_token', 'cf4acca994838af918f11ffcd95861e6');
+  formData.append('file', audioBlob, 'sample.webm');
+  formData.append('return', 'spotify');
+  const auddRes = await fetch('https://api.audd.io/', { method: 'POST', body: formData });
+  const auddData = await auddRes.json();
+  if (auddData.status === 'success' && auddData.result) {
+    const song = auddData.result.title;
+    const artist = auddData.result.artist;
+    result = { result: `The song is "${song}" by ${artist}.` };
+  } else {
+    result = { result: "I couldn't identify this song. Ask the user to make sure music is playing clearly nearby, then try again." };
+  }
+        }
         } catch (e: any) {
             result = { error: e.message };
         }
