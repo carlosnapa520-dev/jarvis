@@ -39,7 +39,17 @@ const reimagineTool: FunctionDeclaration = {
     required: ["prompt"],
   },
 };
-
+const playMusicTool: FunctionDeclaration = {
+  name: "play_music",
+  description: "Opens Spotify to search for and play a song, artist, or playlist the user wants to listen to.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      query: { type: Type.STRING, description: "The song, artist, or playlist name to search for." },
+    },
+    required: ["query"],
+  },
+};
 export class LiveService {
   private ai: GoogleGenAI;
   private session: any = null; // Typing 'any' because session type is internal to SDK implementation for now
@@ -275,6 +285,19 @@ export class LiveService {
                  result = { result: "Photo captured and processing in background. Inform the user the image is rendering." };
              }
           }
+         } else if (fc.name === "play_music") {
+                const args = fc.args as any;
+                const query = args.query;
+                const url = `https://open.spotify.com/search/${encodeURIComponent(query)}`;
+                window.open(url, '_blank');
+                result = { result: `Opened Spotify search for ${query}` };
+                this.onMessage({
+                  id: fc.id,
+                  role: 'model',
+                  text: `Opening Spotify for "${query}"...`,
+                  timestamp: new Date()
+                });
+              } 
         } catch (e: any) {
             result = { error: e.message };
         }
