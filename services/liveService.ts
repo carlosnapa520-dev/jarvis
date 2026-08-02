@@ -284,17 +284,16 @@ export class LiveService {
                  // Immediate return
                  result = { result: "Photo captured and processing in background. Inform the user the image is rendering." };
              }
-          }
          } else if (fc.name === "play_music") {
                 const args = fc.args as any;
                 const query = args.query;
-                const url = `https://open.Spotify com/search/${encodeURIComponent(query)}`;
+                const url = `https://open.spotify.com/search/${encodeURIComponent(query)}`;
                 window.open(url, '_blank');
                 result = { result: `Opened Spotify search for ${query}` };
                 this.onMessage({
                   id: fc.id,
                   role: 'model',
-                  text: `Opening YouTube for "${query}"...`,
+                  text: `Opening Spotify for "${query}"...`,
                   timestamp: new Date()
                 });
               } 
