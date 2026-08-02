@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <script>
+      window.onerror = function(msg, url, line, col, error) {
+        document.body.innerHTML = '<pre style="color:white;background:red;padding:20px;white-space:pre-wrap;font-size:14px;">' + msg + '\n' + (error && error.stack || '') + '</pre>';
+      };
+      window.addEventListener('unhandledrejection', function(event) {
+        document.body.innerHTML = '<pre style="color:white;background:red;padding:20px;white-space:pre-wrap;font-size:14px;">' + event.reason + '</pre>';
+      });
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Jarvis</title>
