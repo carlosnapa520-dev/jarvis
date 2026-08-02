@@ -185,9 +185,16 @@ private saveMemoryFact(fact: string) {
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         callbacks: {
           onopen: () => {
-            this.onStateChange(ConnectionState.CONNECTED);
-            this.setupAudioInput(stream, sessionPromise);
-          },
+  this.onStateChange(ConnectionState.CONNECTED);
+  this.setupAudioInput(stream, sessionPromise);
+}, const now = new Date();
+const dateTimeStr = now.toLocaleString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+sessionPromise.then(session => {
+  session.sendClientContent({
+    turns: [{ role: 'user', parts: [{ text: `[SYSTEM TRIGGER: The user just connected. Proactively greet them. Tell them today's date and time (${dateTimeStr}), share a brief interesting fact or motivational thought for the day, and mention they can ask you to play music anytime.]` }] }],
+    turnComplete: true
+  });
+});
           onmessage: (msg) => this.handleMessage(msg, sessionPromise),
           onclose: () => this.onStateChange(ConnectionState.DISCONNECTED),
           onerror: (err) => {
