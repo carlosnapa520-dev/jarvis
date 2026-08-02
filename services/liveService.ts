@@ -375,7 +375,6 @@ export class LiveService {
     text: `Opening "${query}"...`,
     timestamp: new Date()
   });
-    }
           } else if (fc.name === "identify_song") {
   this.onMessage({
     id: fc.id,
