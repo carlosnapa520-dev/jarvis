@@ -81,6 +81,17 @@ const identifySongTool: FunctionDeclaration = {
     properties: {},
   },
 };
+const rememberFactTool: FunctionDeclaration = {
+  name: "remember_fact",
+  description: "Saves a piece of information the user wants Jarvis to remember for future conversations, like their name, preferences, or important details.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      fact: { type: Type.STRING, description: "The fact to remember, phrased clearly, e.g. 'The user's name is Carlos' or 'The user's favorite color is blue'." },
+    },
+    required: ["fact"],
+  },
+};
 export class LiveService {
   private ai: GoogleGenAI;
   private session: any = null; // Typing 'any' because session type is internal to SDK implementation for now
@@ -114,6 +125,25 @@ export class LiveService {
        });
       }
    }
+  private getMemoryContext(): string {
+  try {
+    const facts = JSON.parse(localStorage.getItem('jarvis_memory') || '[]');
+    if (facts.length === 0) return '';
+    return ' Known facts about the user: ' + facts.join('; ') + '.';
+  } catch {
+    return '';
+  }
+}
+
+private saveMemoryFact(fact: string) {
+  try {
+    const facts = JSON.parse(localStorage.getItem('jarvis_memory') || '[]');
+    facts.push(fact);
+    localStorage.setItem('jarvis_memory', JSON.stringify(facts));
+  } catch (e) {
+    console.error('Failed to save memory', e);
+  }
+}
       private recordAmbientAudio(durationMs: number): Promise<Blob> {
     return new Promise((resolve, reject) => {
       if (!this.micStream) {
@@ -156,8 +186,8 @@ export class LiveService {
         },
         config: {
           responseModalities: [Modality.AUDIO],
-          systemInstruction: "You are Jarvis, a highly advanced AI assistant. You are helpful, precise, and have a futuristic personality. When the user asks to play, listen to, or hear music, a song, or an artist, you MUST use the play_music tool instead of search_google. When the user asks to watch, see, or find a video on YouTube, use the open_youtube tool. When the user asks to open a specific website, or wants to see search results in the browser (not just hear the answer), use the open_website tool. Use search_google only when the user wants a spoken answer, not to open a page. When the user asks what song is playing or to identify a song by listening, use the identify_song tool. It takes a few seconds while it listens. \n\nCRITICAL RULES:\n1. If the user asks to 'create', 'generate', or 'draw' an image from scratch, you MUST use the `create_illustration` tool.\n2. If the user asks to 'take a photo', 'capture me', 'selfie', 'picture of me', or 'reimagine' them, you MUST use the `reimagine_user` tool. Do NOT just describe the video feed textually. You must generate an actual image using the tool.\n3. For real-time information/facts, use `search_google`.\n4. Always confirm verbally when you are about to perform an action (e.g., 'Capturing that for you now...When the user asks to play music, listen to a song, or hear an artist, you MUST use the play_music tool — do NOT use search_google for music requests.') If the user asks 'what song is this', to identify a song playing nearby, or to Shazam a song, you MUST use the identify_song tool — this listens to ambient audio. Do NOT use search_google for this, even if the user describes lyrics or hums.",
-          tools: [{ functionDeclarations: [searchTool, createTool, reimagineTool, playMusicTool, openYoutubeTool, openWebsiteTool, identifySongTool] }]
+          systemInstruction: "You are Jarvis, a highly advanced AI assistant. You are helpful, precise, and have a futuristic personality. When the user asks to play, listen to, or hear music, a song, or an artist, you MUST use the play_music tool instead of search_google. When the user asks to watch, see, or find a video on YouTube, use the open_youtube tool. When the user asks to open a specific website, or wants to see search results in the browser (not just hear the answer), use the open_website tool. Use search_google only when the user wants a spoken answer, not to open a page. When the user asks what song is playing or to identify a song by listening, use the identify_song tool. It takes a few seconds while it listens. \n\nCRITICAL RULES:\n1. If the user asks to 'create', 'generate', or 'draw' an image from scratch, you MUST use the `create_illustration` tool.\n2. If the user asks to 'take a photo', 'capture me', 'selfie', 'picture of me', or 'reimagine' them, you MUST use the `reimagine_user` tool. Do NOT just describe the video feed textually. You must generate an actual image using the tool.\n3. For real-time information/facts, use `search_google`.\n4. Always confirm verbally when you are about to perform an action (e.g., 'Capturing that for you now...When the user asks to play music, listen to a song, or hear an artist, you MUST use the play_music tool — do NOT use search_google for music requests.') If the user asks 'what song is this', to identify a song playing nearby, or to Shazam a song, you MUST use the identify_song tool — this listens to ambient audio. Do NOT use search_google for this, even if the user describes lyrics or hums.When the user tells you something to remember (like their name or a preference), use the remember_fact tool to save it." + this.getMemoryContext(),
+          tools: [{ functionDeclarations: [searchTool, createTool, reimagineTool, playMusicTool, openYoutubeTool, openWebsiteTool, identifySongTool, rememberFactTool] }]
         }
       });
       
@@ -396,7 +426,18 @@ export class LiveService {
   } else {
     result = { result: "I couldn't identify this song. Ask the user to make sure music is playing clearly nearby, then try again." };
   }
-        }
+            } else if (fc.name === "remember_fact") {
+  const args = fc.args as any;
+  const fact = args.fact;
+  this.saveMemoryFact(fact);
+  result = { result: `Got it, I'll remember that.` };
+  this.onMessage({
+    id: fc.id,
+    role: 'model',
+    text: `Remembered: "${fact}"`,
+    timestamp: new Date()
+  });
+          }
         } catch (e: any) {
             result = { error: e.message };
         }
