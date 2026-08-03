@@ -184,9 +184,7 @@ private saveMemoryFact(fact: string) {
       const sessionPromise = this.ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         callbacks: {
-          onopen: () => {
-  this.onStateChange(ConnectionState.CONNECTED);
-  this.setupAudioInput(stream, sessionPromise);
+    
             onopen: () => {
   this.onStateChange(ConnectionState.CONNECTED);
   this.setupAudioInput(stream, sessionPromise);
