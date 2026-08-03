@@ -200,15 +200,25 @@ private saveMemoryFact(fact: string) {
     minute: '2-digit'
   });
 
-  sessionPromise.then(session => {
-    session.sendClientContent({
-      turns: [{
-        role: 'user',
-        parts: [{
-          text: `[Instrucción interna, no visible para el usuario] Acabas de conectarte. Sin esperar a que el usuario hable, tú tomas la iniciativa: salúdalo de forma natural y cálida. Ahora mismo es ${dateTimeStr}. Menciónale la fecha y hora, dale un breve mensaje o pensamiento para el día, y sugiérele (solo de palabra, no lo hagas automáticamente) que puede pedirte poner música de fondo si quiere. Sé breve y suena como si tú hubieras empezado a hablar, no como si respondieras a algo.`
-        }]
-      }],
-      turnComplete: true
+  fetch('/api/weather')
+  .then(r => r.json())
+  .catch(() => null)
+  .then(weatherData => {
+
+    const weatherStr = weatherData && !weatherData.error
+      ? `${weatherData.temp}°C con ${weatherData.description} en ${weatherData.city}`
+      : 'no disponible en este momento';
+
+    sessionPromise.then(session => {
+      session.sendClientContent({
+        turns: [{
+          role: 'user',
+          parts: [{
+            text: `[Instrucción interna, no visible para el usuario] Acabas de conectarte. Sin esperar a que el usuario hable, tú tomas la iniciativa con la formalidad y elegancia de un mayordomo británico clásico (como Alfred Pennyworth). Ahora mismo es ${dateTimeStr}. El clima actual es: ${weatherStr}. Saluda con cortesía y distinción ("Buenos días/tardes/noches, señor"), menciona la fecha y hora con precisión, comenta brevemente el clima, y sugiere de forma educada (solo de palabra) que puede pedir música de fondo si lo desea. Mantén un tono servicial pero nunca servil, con un dejo sutil de ingenio seco británico. Sé breve.`
+          }]
+        }],
+        turnComplete: true
+      });
     });
   });
    },      
