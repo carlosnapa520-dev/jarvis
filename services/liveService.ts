@@ -187,14 +187,33 @@ private saveMemoryFact(fact: string) {
           onopen: () => {
   this.onStateChange(ConnectionState.CONNECTED);
   this.setupAudioInput(stream, sessionPromise);
-}, const now = new Date();
-const dateTimeStr = now.toLocaleString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-sessionPromise.then(session => {
-  session.sendClientContent({
-    turns: [{ role: 'user', parts: [{ text: `[SYSTEM TRIGGER: The user just connected. Proactively greet them. Tell them today's date and time (${dateTimeStr}), share a brief interesting fact or motivational thought for the day, and mention they can ask you to play music anytime.]` }] }],
-    turnComplete: true
+            onopen: () => {
+  this.onStateChange(ConnectionState.CONNECTED);
+  this.setupAudioInput(stream, sessionPromise);
+
+  // --- Disparador proactivo: Jarvis inicia la conversación ---
+  const now = new Date();
+  const dateTimeStr = now.toLocaleString('es-EC', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
   });
-});
+
+  sessionPromise.then(session => {
+    session.sendClientContent({
+      turns: [{
+        role: 'user',
+        parts: [{
+          text: `[Instrucción interna, no visible para el usuario] Acabas de conectarte. Sin esperar a que el usuario hable, tú tomas la iniciativa: salúdalo de forma natural y cálida. Ahora mismo es ${dateTimeStr}. Menciónale la fecha y hora, dale un breve mensaje o pensamiento para el día, y sugiérele (solo de palabra, no lo hagas automáticamente) que puede pedirte poner música de fondo si quiere. Sé breve y suena como si tú hubieras empezado a hablar, no como si respondieras a algo.`
+        }]
+      }],
+      turnComplete: true
+    });
+  });
+   },         
           onmessage: (msg) => this.handleMessage(msg, sessionPromise),
           onclose: () => this.onStateChange(ConnectionState.DISCONNECTED),
           onerror: (err) => {
