@@ -213,7 +213,7 @@ private saveMemoryFact(fact: string) {
       turnComplete: true
     });
   });
-   },         
+   },      
           onmessage: (msg) => this.handleMessage(msg, sessionPromise),
           onclose: () => this.onStateChange(ConnectionState.DISCONNECTED),
           onerror: (err) => {
